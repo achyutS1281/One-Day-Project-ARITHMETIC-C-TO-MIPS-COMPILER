@@ -1,0 +1,206 @@
+/*if (strcmp(args[i + 1], "immediate") == 0) {
+						if (strcmp(op, "mult") == 0) {
+							if(immediate[currImm] == 1 || immediate[currImm] == -1) {
+								sprintf(temp_str, "$t%d", currOp + 1);
+								char* currMove = (char*)malloc(10 * sizeof(char));
+								sprintf(temp_str, "move %s,%s\n", currTemps[i], currTemps[i - 1]);
+								if(immediate[currImm] == -1) {
+									if (useTarget) {
+										sprintf(temp_str, "sub %s,$zero,%s\n", target, currTemps[i]);
+									}
+									else {
+										*temp_offset += 1;
+										sprintf(temp_str, "sub %s,$zero,%s\n", currMove, currTemps[i]);
+									}
+								}
+								else {
+									if (useTarget) {
+										sprintf(temp_str, "move %s,%s\n", target, currTemps[i]);
+									}
+									else {
+										*temp_offset += 1;
+										sprintf(temp_str, "move %s,%s\n", currMove, currTemps[i]);
+									}
+								}
+								strcat(out, temp_str);
+								strcpy(currTemps[i], currMove);
+							}
+							else if(immediate[currImm] == 0){
+								if(useTarget) {
+									*temp_offset -= 1;
+									sprintf(temp_str, "li %s,0\n", target);
+								}
+								else {
+									sprintf(temp_str, "li %s,0\n", currTemps[i]);
+								}
+								strcat(out, temp_str);
+							}
+							else {
+								int* powers = (int*)malloc(10 * sizeof(int));
+								find_power_of_two_series(abs(immediate[currImm]), powers);
+								sprintf(temp_str, "$t%d", currOp + 1);
+								char* currMove = (char*)malloc(10 * sizeof(char));
+								strcpy(currMove, temp_str);
+								bool happened = false;
+								for (int j = 5; j > 0; j--) {
+									if (powers[j] != 0) {
+										sprintf(temp_str, "sll %s,%s,%d\n", currTemps[i], currTemps[i-1], powers[j]);
+										strcat(out, temp_str);  // Append the result to 'out'
+										if (!happened) {
+											sprintf(temp_str, "move %s,%s\n", currMove, currTemps[i]);
+											strcat(out, temp_str);  // Append the result to 'out'
+										}else {
+											sprintf(temp_str, "add %s,%s,%s\n", currMove, currMove, currTemps[i]);
+											strcat(out, temp_str);  // Append the result to 'out'
+										}
+										happened = true;
+									}
+
+								}
+								if (immediate[currImm] % 2 != 0) {
+									sprintf(temp_str, "add %s,%s,%s\n", currMove, currMove, args[i]);
+									strcat(out, temp_str);
+								}
+								strcpy(currTemps[i], currMove);
+								if (immediate[currImm] < 0) {
+									if (useTarget) {
+										*temp_offset -= 1;
+										sprintf(temp_str, "sub %s,$zero,%s\n", target, currMove);
+									}
+									else {
+										sprintf(temp_str, "sub %s,$zero,%s\n", currTemps[i], currMove);
+									}
+									strcat(out, temp_str);  // Append the result to 'out'
+								}
+								else {
+									if (useTarget) {
+										*temp_offset -= 1;
+										sprintf(temp_str, "move %s,%s\n", target, currMove);
+										strcat(out, temp_str);  // Append the result to 'out'
+									}
+									else {
+										sprintf(temp_str, "move $t%d,%s\n", currOp + 2, currMove);
+										strcat(out, temp_str);  // Append the result to 'out'
+										sprintf(temp_str, "$t%d", currOp + 2);
+										strcpy(currTemps[i], temp_str);
+									}
+								}
+								sprintf(temp_str, "$t%d", currOp + 2);
+								strcpy(currTemps[i], temp_str);
+								currOp++;
+							}
+						}
+						else {
+							if (immediate[currImm] == 1) {
+								if(useTarget) {
+									*temp_offset -= 1;
+									sprintf(temp_str, "move %s,%s\n", target, currTemps[i - 1]);
+								}
+								else {
+									sprintf(temp_str, "move %s,%s\n", currTemps[i], currTemps[i - 1]);
+								}
+								strcat(out, temp_str);
+							}
+							else if (immediate[currImm] == -1) {
+								if(useTarget) {
+									*temp_offset -= 1;
+									sprintf(temp_str, "sub %s,$zero,%s\n", target, currTemps[i - 1]);
+								}
+								else {
+									sprintf(temp_str, "sub %s,$zero,%s\n", currTemps[i], currTemps[i - 1]);
+								}
+								strcat(out, temp_str);
+							}
+							else {
+								if (mod) {
+									sprintf(temp_str, "li $t%d,%d\n", currOp, immediate[currImm]);
+									strcat(out, temp_str);
+									sprintf(temp_str, "div %s,$t%d\n", currTemps[i - 1], currOp);
+									strcat(out, temp_str);
+									if (useTarget) {
+										sprintf(temp_str, "mfhi %s\n", target);
+									}
+									else {
+										sprintf(temp_str, "mfhi $t%d\n", currOp + 1);
+									}
+									strcat(out, temp_str);
+								}
+								else {
+
+									bool power = is_power_of_two(abs(immediate[currImm]));
+									if (power) {
+										sprintf(temp_str, "bltz %s,L%d\n", currTemps[i - 1], *label_offset);
+										strcat(out, temp_str);
+										int powerLog = log2(abs(immediate[currImm]));
+										if (useTarget) {
+											*temp_offset -= 1;
+											sprintf(temp_str, "srl %s,%s,%d\n", target, currTemps[i - 1], powerLog);
+										}
+										else {
+											sprintf(temp_str, "srl %s,%s,%d\n", currTemps[i], currTemps[i - 1], powerLog);
+										}
+										strcat(out, temp_str);
+										if (immediate[currImm] < 0) {
+											if (useTarget) {
+												*temp_offset -= 1;
+												sprintf(temp_str, "sub %s,$zero,%s\n", target, target);
+											}
+											else {
+												sprintf(temp_str, "sub %s,$zero,%s\n", currTemps[i], currTemps[i]);
+											}
+											strcat(out, temp_str);
+										}
+										
+										sprintf(temp_str, "j L%d\n", *label_offset + 1);
+										strcat(out, temp_str);
+										sprintf(temp_str, "L%d:\n", *label_offset);
+										strcat(out, temp_str);
+									}
+
+									sprintf(temp_str, "li $t%d,%d\n", currOp, immediate[currImm]);
+									strcat(out, temp_str);
+									sprintf(temp_str, "div %s,$t%d\n", currTemps[i - 1], currOp);
+									strcat(out, temp_str);
+									if (useTarget) {
+										sprintf(temp_str, "mflo %s\n", target);
+									}
+									else {
+										sprintf(temp_str, "mflo $t%d\n", currOp + 1);
+									}
+									strcat(out, temp_str);
+									if (power) {
+										sprintf(temp_str, "L%d:\n", *label_offset + 1);
+										strcat(out, temp_str);
+									}
+									*label_offset += 2;
+									*temp_offset += 1;
+								}
+								sprintf(temp_str, "$t%d", currOp + 1);
+								strcpy(currTemps[i], temp_str);
+								currOp++;
+							}
+						}
+					}
+					else {
+						sprintf(temp_str, "%s %s,%s\n", op, args[i], args[i + 1]);
+						strcat(out, temp_str);
+						if (mod) {
+							if (useTarget) {
+								*temp_offset -= 1;
+								sprintf(temp_str, "mfhi %s\n", target);
+							}
+							else {
+								sprintf(temp_str, "mfhi %s\n", currTemps[i]);
+							}
+						}
+						else {
+							if (useTarget) {
+								*temp_offset -= 1;
+								sprintf(temp_str, "mflo %s\n", target);
+							}
+							else {
+								sprintf(temp_str, "mflo %s\n", currTemps[i]);
+							}
+						}
+						strcat(out, temp_str);
+					}*/
