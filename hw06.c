@@ -820,6 +820,8 @@ char* generateLine(char* line, char** args, int numArgs, enum Operation* ops, in
 						}
 					}
 					else { // If the next argument is not an immediate
+						sprintf(temp_str, "$t%d", max(PEMDAS[i-1], PEMDAS[i+1]) + 1); // Generate the new temp register
+						strcpy(currTemps[i], temp_str);
 						if (useTarget) { // If the target register is used
 							*temp_offset -= 1;
 							sprintf(temp_str, "%s %s,%s,%s\n", op, target, currTemps[i - 1], currTemps[i + 1]); // Generate the MIPS code for the operation
@@ -827,12 +829,18 @@ char* generateLine(char* line, char** args, int numArgs, enum Operation* ops, in
 						else {
 							sprintf(temp_str, "%s %s,%s,%s\n", op, currTemps[i], currTemps[i - 1], currTemps[i + 1]); // Generate the MIPS code for the operation
 						}
+						for(int j = i; j < numOps && (ops[j] == MULTIPLICATION || ops[j] == DIVISION); j++) {
+							strcpy(currTemps[j], currTemps[i]);
+						}
 					}
 
 				}
 				else if (PEMDAS[i + 1] != -1) { // If the next expression has used a temp register
 					sprintf(temp_str, "%s %s,%s,%s\n", op, currTemps[i], args[i], currTemps[i + 1]); // Generate the MIPS code for the operation
 					strcat(out, temp_str);
+					for (int j = i; j < numOps && (ops[j] == MULTIPLICATION || ops[j] == DIVISION); j++) {
+						strcpy(currTemps[j], currTemps[i]);
+					}
 				}
 				else if (i == 0 && strcmp(args[i + 1], "immediate") != 0) { // If the first expression is not an immediate
 					if (useTarget) { // If the target register is used
